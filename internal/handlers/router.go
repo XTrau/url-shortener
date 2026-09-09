@@ -23,5 +23,5 @@ func RegisterRoutes(mux *http.ServeMux, sh ShortenerHandlers) {
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
 
 	// Роут для Prometheus
-	http.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/metrics", promhttp.Handler())
 }
