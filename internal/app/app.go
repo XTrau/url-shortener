@@ -51,13 +51,11 @@ func Run() error {
 
 	// Handlers
 	r := handlers.NewShortenerRoutes(urlRepository, urlCache)
-	wh := handlers.NewWebHandlers()
 
 	// Register handlers
 	mux := http.NewServeMux()
 
-	r.RegisterRoutes(mux)
-	wh.RegisterRoutes(mux)
+	handlers.RegisterRoutes(mux, r)
 
 	h := middlewares.LoggingMiddleware(mux)
 

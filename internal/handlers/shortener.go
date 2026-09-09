@@ -12,22 +12,16 @@ import (
 	"urlshortener/internal/usecases"
 )
 
-type ShortenerRoutes struct {
+type shortenerHandlers struct {
 	useCases usecases.UrlUseCases
 }
 
-func NewShortenerRoutes(urlRepo domain.UrlRepository, urlCache cache.UrlCacher) *ShortenerRoutes {
+func NewShortenerRoutes(urlRepo domain.UrlRepository, urlCache cache.UrlCacher) *shortenerHandlers {
 	useCases := usecases.NewUrlUseCases(urlRepo, urlCache)
-	return &ShortenerRoutes{useCases}
+	return &shortenerHandlers{useCases}
 }
 
-func (sr *ShortenerRoutes) RegisterRoutes(mux *http.ServeMux) {
-	slog.Debug("Registering shortener routes")
-	mux.HandleFunc("POST /short", sr.ShortenerHandler)
-	mux.HandleFunc("GET /s/{slug}", sr.RedirectHandler)
-}
-
-func (sr *ShortenerRoutes) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
+func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	var urlReq domain.Url
 
 	if err := json.NewDecoder(r.Body).Decode(&urlReq); err != nil {
@@ -50,7 +44,7 @@ func (sr *ShortenerRoutes) ShortenerHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (sr *ShortenerRoutes) RedirectHandler(w http.ResponseWriter, r *http.Request) {
+func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Request) {
 	slugText := r.PathValue("slug")
 	slugID, err := strconv.Atoi(r.URL.Query().Get("i"))
 
