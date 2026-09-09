@@ -54,10 +54,10 @@ func Run() error {
 
 	// Register handlers
 	mux := http.NewServeMux()
-
 	handlers.RegisterRoutes(mux, r)
 
-	h := middlewares.LoggingMiddleware(mux)
+	// Middlewares
+	h := middlewares.PrometheusMiddleware(mux)
 
 	server := http.Server{
 		Addr:    ":8080",

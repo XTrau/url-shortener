@@ -3,6 +3,8 @@ package handlers
 import (
 	"log/slog"
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type ShortenerHandlers interface {
@@ -19,4 +21,7 @@ func RegisterRoutes(mux *http.ServeMux, sh ShortenerHandlers) {
 
 	// Роуты для frontend
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
+
+	// Роут для Prometheus
+	http.Handle("/metrics", promhttp.Handler())
 }
