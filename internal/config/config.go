@@ -1,4 +1,4 @@
-package app
+package config
 
 import (
 	"fmt"
@@ -6,8 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -41,10 +39,6 @@ func (c *Config) RedisPassword() string { return c.redisPassword }
 func (c *Config) RedisDatabase() int    { return c.redisDatabase }
 
 func LoadConfig() (*Config, error) {
-	if err := godotenv.Load(); err == nil {
-		slog.Info(".env file loaded.")
-	}
-
 	var logLevel slog.Level
 	logLevelStr := os.Getenv("LOG_LEVEL")
 

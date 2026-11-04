@@ -12,11 +12,11 @@ type UrlPostgresRepository struct {
 	db *sql.DB
 }
 
-func NewUrlPostgresRepository(db *sql.DB) UrlPostgresRepository {
-	return UrlPostgresRepository{db}
+func NewUrlPostgresRepository(db *sql.DB) *UrlPostgresRepository {
+	return &UrlPostgresRepository{db}
 }
 
-func (repo UrlPostgresRepository) Create(url domain.Url, slug domain.Slug) error {
+func (repo *UrlPostgresRepository) Create(url domain.Url, slug domain.Slug) error {
 	slog.Debug("Inserting url to database", slog.String("url", url.Url), slog.String("slug", slug.Text), slog.Int("slugID", slug.SlugID))
 
 	query := "INSERT INTO urls (url, slug, slug_id) VALUES ($1, $2, $3)"
@@ -25,7 +25,7 @@ func (repo UrlPostgresRepository) Create(url domain.Url, slug domain.Slug) error
 	return err
 }
 
-func (repo UrlPostgresRepository) GetUrlBySlug(slug domain.Slug) (domain.Url, error) {
+func (repo *UrlPostgresRepository) GetUrlBySlug(slug domain.Slug) (domain.Url, error) {
 	slog.Debug("Getting url from database", slog.String("slug", slug.Text), slog.Int("slugID", slug.SlugID))
 
 	query := "SELECT url FROM urls WHERE slug=$1 AND slug_id=$2"
@@ -39,7 +39,7 @@ func (repo UrlPostgresRepository) GetUrlBySlug(slug domain.Slug) (domain.Url, er
 	return domain.Url{Url: url}, err
 }
 
-func (repo UrlPostgresRepository) GetSlugByUrl(url domain.Url) (domain.Slug, error) {
+func (repo *UrlPostgresRepository) GetSlugByUrl(url domain.Url) (domain.Slug, error) {
 	slog.Debug("Getting url from database", slog.String("url", url.Url))
 
 	query := "SELECT slug, slug_id FROM urls WHERE url=$1"
@@ -59,7 +59,7 @@ func (repo UrlPostgresRepository) GetSlugByUrl(url domain.Url) (domain.Slug, err
 	}, err
 }
 
-func (repo UrlPostgresRepository) GetFreeSlugID(slugText string) (int, error) {
+func (repo *UrlPostgresRepository) GetFreeSlugID(slugText string) (int, error) {
 	slog.Debug("Getting last slug ID", slog.String("slug", slugText))
 
 	query := "SELECT COALESCE(MAX(slug_id), 0) as last_slug_id FROM urls where slug=$1"

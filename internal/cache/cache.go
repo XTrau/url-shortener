@@ -10,31 +10,30 @@ import (
 
 const UrlTTL = time.Minute * 5
 
-type UrlCacher interface {
-	Save(url domain.Url, slug domain.Slug) error
-	GetUrl(slug domain.Slug) (domain.Url, error)
-	GetSlug(url domain.Url) (domain.Slug, error)
+type Cache interface {
+	Get(key string) (string, error)
+	Set(key string, value string, ttl time.Duration) error
 }
 
 type UrlCache struct {
-	cache domain.Cache
+	cache Cache
 }
 
-func NewUrlCache(storage domain.Cache) UrlCache {
-	return UrlCache{storage}
+func NewUrlCache(storage Cache) *UrlCache {
+	return &UrlCache{storage}
 }
 
-func (uc UrlCache) GetUrlKey(slug string, slugID int) string {
+func (uc *UrlCache) urlKey(slug string, slugID int) string {
 	return fmt.Sprintf("url:%s#%d", slug, slugID)
 }
 
-func (uc UrlCache) GetSlugKey(url string) string {
+func (uc *UrlCache) slugKey(url string) string {
 	return fmt.Sprintf("slug:%s", url)
 }
 
-func (uc UrlCache) Save(url domain.Url, slug domain.Slug) error {
-	urlKey := uc.GetUrlKey(slug.Text, slug.SlugID)
-	slugKey := uc.GetSlugKey(url.Url)
+func (uc *UrlCache) Save(url domain.Url, slug domain.Slug) error {
+	urlKey := uc.urlKey(slug.Text, slug.SlugID)
+	slugKey := uc.slugKey(url.Url)
 
 	slog.Debug(
 		"Saving url to Cache",
@@ -61,8 +60,8 @@ func (uc UrlCache) Save(url domain.Url, slug domain.Slug) error {
 	return nil
 }
 
-func (uc UrlCache) GetUrl(slug domain.Slug) (domain.Url, error) {
-	key := uc.GetUrlKey(slug.Text, slug.SlugID)
+func (uc *UrlCache) GetUrl(slug domain.Slug) (domain.Url, error) {
+	key := uc.urlKey(slug.Text, slug.SlugID)
 	slog.Debug("Getting url from Cache", slog.String("key", key))
 
 	url, err := uc.cache.Get(key)
@@ -74,8 +73,8 @@ func (uc UrlCache) GetUrl(slug domain.Slug) (domain.Url, error) {
 	return domain.Url{Url: url}, err
 }
 
-func (uc UrlCache) GetSlug(url domain.Url) (domain.Slug, error) {
-	key := uc.GetSlugKey(url.Url)
+func (uc *UrlCache) GetSlug(url domain.Url) (domain.Slug, error) {
+	key := uc.slugKey(url.Url)
 	slog.Debug("Getting slug from Redis", slog.String("key", key))
 
 	slugData, err := uc.cache.Get(key)

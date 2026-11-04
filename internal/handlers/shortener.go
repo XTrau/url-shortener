@@ -3,21 +3,22 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"urlshortener/internal/apperrors"
-	"urlshortener/internal/cache"
 	"urlshortener/internal/domain"
-	"urlshortener/internal/usecases"
 )
 
-type shortenerHandlers struct {
-	useCases usecases.UrlUseCases
+type UrlUseCases interface {
+	GetSlug(url domain.Url) (domain.Slug, error)
+	GetUrl(slug domain.Slug) (domain.Url, error)
 }
 
-func NewShortenerRoutes(urlRepo domain.UrlRepository, urlCache cache.UrlCacher) *shortenerHandlers {
-	useCases := usecases.NewUrlUseCases(urlRepo, urlCache)
+type shortenerHandlers struct {
+	useCases UrlUseCases
+}
+
+func NewShortenerHandlers(useCases UrlUseCases) *shortenerHandlers {
 	return &shortenerHandlers{useCases}
 }
 
@@ -28,8 +29,6 @@ func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
-	slog.Debug("Request to Short url", slog.Any("Request Body", urlReq))
 
 	slug, err := sr.useCases.GetSlug(urlReq)
 	if err != nil {
@@ -52,8 +51,6 @@ func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Requ
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
-	slog.Debug("slug request", slog.String("slug", slugText))
 
 	slug := domain.Slug{
 		SlugID: slugID,

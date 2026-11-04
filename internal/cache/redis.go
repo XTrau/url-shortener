@@ -13,14 +13,14 @@ type RedisCache struct {
 	timeout time.Duration
 }
 
-func NewRedisCache(rdb *redis.Client, timeout time.Duration) RedisCache {
-	return RedisCache{
+func NewRedisCache(rdb *redis.Client, timeout time.Duration) *RedisCache {
+	return &RedisCache{
 		rdb:     rdb,
 		timeout: timeout,
 	}
 }
 
-func (kvs RedisCache) Get(key string) (string, error) {
+func (kvs *RedisCache) Get(key string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), kvs.timeout)
 	defer cancel()
 
@@ -33,7 +33,7 @@ func (kvs RedisCache) Get(key string) (string, error) {
 	return res, err
 }
 
-func (kvs RedisCache) Set(key string, value string, ttl time.Duration) error {
+func (kvs *RedisCache) Set(key string, value string, ttl time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), kvs.timeout)
 	defer cancel()
 	return kvs.rdb.Set(ctx, key, value, ttl).Err()

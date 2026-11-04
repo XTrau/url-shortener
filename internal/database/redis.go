@@ -16,7 +16,7 @@ type RedisConfig interface {
 	RedisDatabase() int
 }
 
-func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
+func ConnectRedis(cfg RedisConfig) (*redis.Client, error) {
 	addr := fmt.Sprintf("%v:%v", cfg.RedisHost(), cfg.RedisPort())
 
 	rdb := redis.NewClient(&redis.Options{

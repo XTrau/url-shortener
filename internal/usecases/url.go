@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math/rand"
 	"strconv"
+	"strings"
 	"urlshortener/internal/apperrors"
-	"urlshortener/internal/cache"
 	"urlshortener/internal/domain"
 
 	"golang.org/x/sync/singleflight"
@@ -14,22 +14,37 @@ import (
 const charSet = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM134567890"
 
 func generateSlug(size int) string {
-	var result string
+	var b strings.Builder
+	b.Grow(size)
+
 	for range size {
 		ind := rand.Intn(len(charSet))
-		result += charSet[ind : ind+1]
+		b.Write([]byte(charSet[ind : ind+1]))
 	}
-	return result
+	return b.String()
+}
+
+type UrlRepository interface {
+	Create(url domain.Url, slug domain.Slug) error
+	GetUrlBySlug(slug domain.Slug) (domain.Url, error)
+	GetSlugByUrl(url domain.Url) (domain.Slug, error)
+	GetFreeSlugID(slugText string) (int, error)
+}
+
+type UrlCache interface {
+	Save(url domain.Url, slug domain.Slug) error
+	GetUrl(slug domain.Slug) (domain.Url, error)
+	GetSlug(url domain.Url) (domain.Slug, error)
 }
 
 type UrlUseCases struct {
-	urlRepository domain.UrlRepository
-	urlCache      cache.UrlCacher
+	urlRepository UrlRepository
+	urlCache      UrlCache
 	g             *singleflight.Group
 }
 
-func NewUrlUseCases(urlRepo domain.UrlRepository, urlCache cache.UrlCacher) UrlUseCases {
-	return UrlUseCases{
+func NewUrlUseCases(urlRepo UrlRepository, urlCache UrlCache) *UrlUseCases {
+	return &UrlUseCases{
 		urlRepository: urlRepo,
 		urlCache:      urlCache,
 		g:             &singleflight.Group{},
@@ -37,21 +52,21 @@ func NewUrlUseCases(urlRepo domain.UrlRepository, urlCache cache.UrlCacher) UrlU
 }
 
 // Сохраняет url в бд, создает для него новый slug
-func (uc UrlUseCases) save(url domain.Url) (domain.Slug, error) {
+func (uc *UrlUseCases) save(url domain.Url) (domain.Slug, error) {
 	var slug domain.Slug
 
-	// Проверка на случай если url в бд уже существует
-	_, err := uc.urlRepository.GetSlugByUrl(url)
+	// Проверка на случай если url уже существует
+	if _, err := uc.urlCache.GetSlug(url); err == nil {
+		return domain.Slug{}, apperrors.ErrAlreadyExists
+	}
 
+	_, err := uc.urlRepository.GetSlugByUrl(url)
 	if err == nil {
 		return domain.Slug{}, apperrors.ErrAlreadyExists
 	}
 
-	if !errors.Is(err, apperrors.ErrSlugNotFound) {
-		// Неизвестная ошибка
-		return domain.Slug{}, err
-	} else {
-		// Ошибка Slug не найден, создаем новый и сохраняем в репозиторий
+	if errors.Is(err, apperrors.ErrSlugNotFound) {
+		// Slug не найден, создаем новый и сохраняем в репозиторий
 
 		slugText := generateSlug(8)
 		slugID, err := uc.urlRepository.GetFreeSlugID(slugText)
@@ -71,11 +86,15 @@ func (uc UrlUseCases) save(url domain.Url) (domain.Slug, error) {
 		}
 
 		return slug, nil
+	} else {
+		// Неизвестная ошибка
+		return domain.Slug{}, err
 	}
 }
 
-// Возвращает slug для переданного url, если такого url не существует, то генерируется новый slug и сохраняется в бд
-func (uc UrlUseCases) GetSlug(url domain.Url) (domain.Slug, error) {
+// Возвращает slug для переданного url.
+// Если url не существует, то генерируется новый slug и сохраняется в бд
+func (uc *UrlUseCases) GetSlug(url domain.Url) (domain.Slug, error) {
 	// Проверка в cache
 	cachedSlug, err := uc.urlCache.GetSlug(url)
 	if err == nil {
@@ -83,18 +102,17 @@ func (uc UrlUseCases) GetSlug(url domain.Url) (domain.Slug, error) {
 	}
 
 	// Проверка в repository, сохранение в cache, паттерн Single flight
-	s, err, _ := uc.g.Do(url.Url, func() (interface{}, error) {
+	s, err, _ := uc.g.Do(url.Url, func() (any, error) {
 		slug, err := uc.urlRepository.GetSlugByUrl(url)
 
-		if err != nil && !errors.Is(err, apperrors.ErrSlugNotFound) {
-			return domain.Slug{}, err
-		}
-
-		if err != nil && errors.Is(err, apperrors.ErrSlugNotFound) {
-			// Если slug для данного url не найден, то создаем новый в бд
-			slug, err = uc.save(url)
-
-			if err != nil {
+		if err != nil {
+			if errors.Is(err, apperrors.ErrSlugNotFound) {
+				slug, err = uc.save(url)
+				if err != nil {
+					return domain.Slug{}, err
+				}
+			} else {
+				// Неизвестная ошибка
 				return domain.Slug{}, err
 			}
 		}
@@ -107,18 +125,17 @@ func (uc UrlUseCases) GetSlug(url domain.Url) (domain.Slug, error) {
 }
 
 // Возвращает url для переданного slug
-func (uc UrlUseCases) GetUrl(slug domain.Slug) (domain.Url, error) {
-	// Проверка в cache
-	urlCached, err := uc.urlCache.GetUrl(slug)
+func (uc *UrlUseCases) GetUrl(slug domain.Slug) (domain.Url, error) {
+	url, err := uc.urlCache.GetUrl(slug)
 	if err == nil {
-		return urlCached, nil
+		return url, nil
 	}
 
 	// Group key для single flight
 	groupKey := slug.Text + "_" + strconv.Itoa(slug.SlugID)
 
 	// Получаем Slug с repository, сохранение в cache, паттерн Single flight
-	u, err, _ := uc.g.Do(groupKey, func() (interface{}, error) {
+	u, err, _ := uc.g.Do(groupKey, func() (any, error) {
 		url, err := uc.urlRepository.GetUrlBySlug(slug)
 		if err != nil {
 			return domain.Url{}, err
