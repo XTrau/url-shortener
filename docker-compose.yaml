@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:18
+    image: postgres:18-alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -17,7 +17,7 @@ services:
       retries: 10
       start_period: 10s
   redis:
-    image: redis:6
+    image: redis:6-alpine
     ports:
       - 6379:6379
     healthcheck:
@@ -50,14 +50,14 @@ services:
       redis:
         condition: service_healthy
   prometheus:
-    image: prom/prometheus:v3.13.3
+    image: prom/prometheus:v3.16.0
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
 
   grafana:
-    image: grafana/grafana:13.0.8
+    image: grafana/grafana:13.2-slim
     ports:
       - "3000:3000"
 
