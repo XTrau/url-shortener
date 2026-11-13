@@ -1,10 +1,26 @@
 package domain
 
-type Url struct {
-	Url string `json:"url"`
+type Slug struct {
+	ID         int    `json:"id"`
+	Text       string `json:"slug"`
+	NextNumber int    `json:"next_number"`
 }
 
-type Slug struct {
-	SlugID int    `json:"slug_id"`
+type UrlSlug struct {
 	Text   string `json:"slug"`
+	Number int    `json:"number"`
+}
+
+func (u UrlSlug) String() string {
+	return ""
+}
+
+func ParseUrlSlug(s string) (UrlSlug, error) {
+	return UrlSlug{}, nil
+}
+
+type Url struct {
+	ID   int     `json:"id"`
+	Url  string  `json:"url"`
+	Slug UrlSlug `json:"slug"`
 }
