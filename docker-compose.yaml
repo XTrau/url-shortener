@@ -7,8 +7,6 @@ services:
       - POSTGRES_DB=postgres
     ports:
       - 5432:5432
-    volumes:
-      - postges_data:/var/lib/postgresql
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres" ]
@@ -60,6 +58,3 @@ services:
     image: grafana/grafana:13.2-slim
     ports:
       - "3000:3000"
-
-volumes:
-  postges_data:
