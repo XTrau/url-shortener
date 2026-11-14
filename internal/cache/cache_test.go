@@ -1,6 +1,7 @@
 package cache_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ type MapKeyValueStorage struct {
 	mu    sync.RWMutex
 }
 
-func (kv *MapKeyValueStorage) Get(key string) (string, error) {
+func (kv *MapKeyValueStorage) Get(ctx context.Context, key string) (string, error) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
 
@@ -25,7 +26,7 @@ func (kv *MapKeyValueStorage) Get(key string) (string, error) {
 	return value, nil
 }
 
-func (kv *MapKeyValueStorage) Set(key string, value string, ttl time.Duration) error {
+func (kv *MapKeyValueStorage) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 
@@ -40,37 +41,35 @@ func TestUrlCache(t *testing.T) {
 	}
 	urlCache := cache.NewUrlCache(cacheStore)
 
-	url := domain.Url{
-		Url: "http://example.com",
-	}
+	url := "http://example.com"
 
-	slug := domain.Slug{
+	slug := domain.UrlSlug{
 		Text:   "qweqwe",
-		SlugID: 1,
+		Number: 1,
 	}
 
-	err := urlCache.Save(url, slug)
+	err := urlCache.Save(context.TODO(), url, slug)
 	if err != nil {
 		t.Errorf("urlCache.Save must return nil error")
 	}
 
-	cachedSlug, err := urlCache.GetSlug(url)
+	cachedSlug, err := urlCache.GetSlug(context.TODO(), url)
 
 	if err != nil {
 		t.Errorf("urlCache.GetSlug must return nil error")
 	}
 
-	if cachedSlug.Text != slug.Text || cachedSlug.SlugID != slug.SlugID {
+	if cachedSlug != slug {
 		t.Errorf(
 			"cachedSlug.Slug=%q, cachedSlug.SlugID=%d expected: cachedSlug.Slug=%q, cachedSlug.SlugID=%d",
 			cachedSlug.Text,
-			cachedSlug.SlugID,
+			cachedSlug.Number,
 			slug.Text,
-			slug.SlugID,
+			slug.Number,
 		)
 	}
 
-	cachedURL, err := urlCache.GetUrl(slug)
+	cachedURL, err := urlCache.GetUrl(context.TODO(), slug)
 
 	if err != nil {
 		t.Errorf("urlCache.GetUrl must return nil error")

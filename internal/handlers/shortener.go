@@ -1,17 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
-	"strconv"
 	"urlshortener/internal/apperrors"
 	"urlshortener/internal/domain"
 )
 
 type UrlUseCases interface {
-	GetSlug(url domain.Url) (domain.Slug, error)
-	GetUrl(slug domain.Slug) (domain.Url, error)
+	GetSlug(ctx context.Context, urlText string) (domain.UrlSlug, error)
+	GetUrl(ctx context.Context, slug domain.UrlSlug) (domain.Url, error)
 }
 
 type shortenerHandlers struct {
@@ -22,15 +23,19 @@ func NewShortenerHandlers(useCases UrlUseCases) *shortenerHandlers {
 	return &shortenerHandlers{useCases}
 }
 
+type GetSlugRequest struct {
+	Url string `json:"url"`
+}
+
 func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
-	var urlReq domain.Url
+	var urlReq GetSlugRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&urlReq); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	slug, err := sr.useCases.GetSlug(urlReq)
+	slug, err := sr.useCases.GetSlug(r.Context(), urlReq.Url)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		panic(err)
@@ -45,19 +50,17 @@ func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Req
 
 func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Request) {
 	slugText := r.PathValue("slug")
-	slugID, err := strconv.Atoi(r.URL.Query().Get("i"))
+	slog.Debug("Getting redirect on slug", slog.String("slug", slugText))
+
+	urlSlug, err := domain.ParseUrlSlug(slugText)
 
 	if err != nil {
+		slog.Info("Error on parse url", slog.String("error", err.Error()))
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	slug := domain.Slug{
-		SlugID: slugID,
-		Text:   slugText,
-	}
-
-	url, err := sr.useCases.GetUrl(slug)
+	url, err := sr.useCases.GetUrl(r.Context(), urlSlug)
 
 	if err != nil {
 		if errors.Is(err, apperrors.ErrUrlNotFound) {

@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -11,8 +12,8 @@ import (
 const UrlTTL = time.Minute * 5
 
 type Cache interface {
-	Get(key string) (string, error)
-	Set(key string, value string, ttl time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value string, ttl time.Duration) error
 }
 
 type UrlCache struct {
@@ -31,9 +32,9 @@ func (uc *UrlCache) slugKey(url string) string {
 	return fmt.Sprintf("slug:%s", url)
 }
 
-func (uc *UrlCache) Save(url domain.Url, slug domain.Slug) error {
-	urlKey := uc.urlKey(slug.Text, slug.SlugID)
-	slugKey := uc.slugKey(url.Url)
+func (uc *UrlCache) Save(ctx context.Context, url string, slug domain.UrlSlug) error {
+	urlKey := uc.urlKey(slug.Text, slug.Number)
+	slugKey := uc.slugKey(url)
 
 	slog.Debug(
 		"Saving url to Cache",
@@ -47,12 +48,12 @@ func (uc *UrlCache) Save(url domain.Url, slug domain.Slug) error {
 		return err
 	}
 
-	err = uc.cache.Set(slugKey, string(slugData), UrlTTL)
+	err = uc.cache.Set(ctx, slugKey, string(slugData), UrlTTL)
 	if err != nil {
 		return err
 	}
 
-	err = uc.cache.Set(urlKey, url.Url, UrlTTL)
+	err = uc.cache.Set(ctx, urlKey, url, UrlTTL)
 	if err != nil {
 		return err
 	}
@@ -60,32 +61,26 @@ func (uc *UrlCache) Save(url domain.Url, slug domain.Slug) error {
 	return nil
 }
 
-func (uc *UrlCache) GetUrl(slug domain.Slug) (domain.Url, error) {
-	key := uc.urlKey(slug.Text, slug.SlugID)
+func (uc *UrlCache) GetUrl(ctx context.Context, slug domain.UrlSlug) (string, error) {
+	key := uc.urlKey(slug.Text, slug.Number)
 	slog.Debug("Getting url from Cache", slog.String("key", key))
 
-	url, err := uc.cache.Get(key)
-
-	if err != nil {
-		return domain.Url{}, err
-	}
-
-	return domain.Url{Url: url}, err
+	return uc.cache.Get(ctx, key)
 }
 
-func (uc *UrlCache) GetSlug(url domain.Url) (domain.Slug, error) {
-	key := uc.slugKey(url.Url)
+func (uc *UrlCache) GetSlug(ctx context.Context, url string) (domain.UrlSlug, error) {
+	key := uc.slugKey(url)
 	slog.Debug("Getting slug from Redis", slog.String("key", key))
 
-	slugData, err := uc.cache.Get(key)
+	slugData, err := uc.cache.Get(ctx, key)
 
 	if err != nil {
-		return domain.Slug{}, err
+		return domain.UrlSlug{}, err
 	}
 
-	var cachedSlug domain.Slug
+	var cachedSlug domain.UrlSlug
 	if err := json.Unmarshal([]byte(slugData), &cachedSlug); err != nil {
-		return domain.Slug{}, err
+		return domain.UrlSlug{}, err
 	}
 
 	return cachedSlug, nil
