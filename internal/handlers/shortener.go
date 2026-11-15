@@ -76,3 +76,7 @@ func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusMovedPermanently)
 }
+
+func (sr *shortenerHandlers) SummaryStatsHandler(w http.ResponseWriter, r *http.Request) {
+
+}
