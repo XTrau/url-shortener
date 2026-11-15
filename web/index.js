@@ -6,7 +6,7 @@ const apiUrl = "http://localhost:8080"
 var currentUrl = inputElement.value
 
 async function shortUrl(url) {
-    const response = await fetch(`${apiUrl}/short`, {
+    const response = await fetch(`${apiUrl}/api/short`, {
         "method": "POST",
         "body": JSON.stringify({ "url": url })
     })
