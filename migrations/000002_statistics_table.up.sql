@@ -7,3 +7,4 @@ CREATE TABLE redirects (
 );
 
 CREATE INDEX idx_redirects_url_id ON redirects USING HASH(url_id);
+CREATE INDEX idx_redirects_redirected_at ON redirects USING BTREE(url_id);
