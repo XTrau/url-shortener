@@ -63,10 +63,13 @@ func run() error {
 	redisCache := cache.NewRedisCache(rdb, time.Second)
 	urlCache := cache.NewUrlCache(redisCache)
 	urlRepository := repositories.NewUrlPostgresRepository(db)
-	useCases := usecases.NewUrlUseCases(urlRepository, urlCache)
+	redirectRepository := repositories.NewRedirectsPostgresRepository(db)
+
+	redirectUseCases := usecases.NewRedirectsUseCases(redirectRepository)
+	urlUseCases := usecases.NewUrlUseCases(urlRepository, urlCache)
 
 	// Handlers
-	h := handlers.NewShortenerHandlers(useCases)
+	h := handlers.NewShortenerHandlers(urlUseCases, redirectUseCases)
 	mux := http.NewServeMux()
 	handlers.RegisterRoutes(mux, h)
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 	"urlshortener/internal/apperrors"
 	"urlshortener/internal/domain"
 )
@@ -15,12 +16,20 @@ type UrlUseCases interface {
 	GetUrl(ctx context.Context, slug domain.UrlSlug) (domain.Url, error)
 }
 
-type shortenerHandlers struct {
-	useCases UrlUseCases
+type RedirectUseCases interface {
+	Save(ctx context.Context, redirect domain.RedirectInfo) error
 }
 
-func NewShortenerHandlers(useCases UrlUseCases) *shortenerHandlers {
-	return &shortenerHandlers{useCases}
+type shortenerHandlers struct {
+	urlUseCases      UrlUseCases
+	redirectUseCases RedirectUseCases
+}
+
+func NewShortenerHandlers(urlUseCases UrlUseCases, redirectUseCases RedirectUseCases) *shortenerHandlers {
+	return &shortenerHandlers{
+		urlUseCases:      urlUseCases,
+		redirectUseCases: redirectUseCases,
+	}
 }
 
 type GetSlugRequest struct {
@@ -35,7 +44,7 @@ func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	slug, err := sr.useCases.GetSlug(r.Context(), urlReq.Url)
+	slug, err := sr.urlUseCases.GetSlug(r.Context(), urlReq.Url)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		panic(err)
@@ -60,7 +69,7 @@ func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	url, err := sr.useCases.GetUrl(r.Context(), urlSlug)
+	url, err := sr.urlUseCases.GetUrl(r.Context(), urlSlug)
 
 	if err != nil {
 		if errors.Is(err, apperrors.ErrUrlNotFound) {
@@ -72,11 +81,42 @@ func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	redirect := domain.RedirectInfo{
+		CreatedAt: time.Now(),
+		IP:        r.RemoteAddr,
+		UserAgent: r.UserAgent(),
+		UrlID:     url.ID,
+	}
+
+	sr.redirectUseCases.Save(r.Context(), redirect)
+
 	w.Header().Set("Location", url.Url)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusMovedPermanently)
 }
 
-func (sr *shortenerHandlers) SummaryStatsHandler(w http.ResponseWriter, r *http.Request) {
+// func (sr *shortenerHandlers) SummaryStatsHandler(w http.ResponseWriter, r *http.Request) {
+// 	slugText := r.PathValue("slug")
+// 	slog.Debug("Getting summary statistics.", slog.String("slug", slugText))
 
-}
+// 	urlSlug, err := domain.ParseUrlSlug(slugText)
+// 	if err != nil {
+// 		slog.Info("Error on parse url", slog.String("error", err.Error()))
+// 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	stats, err := sr.useCases.Statistics(r.Context(), urlSlug)
+
+// 	if err != nil {
+// 		slog.Info("Error getting stats for slug", slog.String("slug", slugText), slog.String("error", err.Error()))
+// 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	if err := json.NewEncoder(w).Encode(&stats); err != nil {
+// 		slog.Info("Error on encode stats", slog.String("slug", slugText), slog.Any("stats", stats), slog.String("error", err.Error()))
+// 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+// 		return
+// 	}
+// }
