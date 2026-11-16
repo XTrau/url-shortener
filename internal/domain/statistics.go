@@ -14,3 +14,14 @@ type SummaryStatistics struct {
 	Unique7D  int `json:"unique_7d"`
 	Unique30D int `json:"unique_30d"`
 }
+
+type PeriodStats struct {
+	Label     string `json:"labels"`
+	Redirects int    `json:"redirects"`
+	Unique    int    `json:"unique"`
+}
+
+type TimelineStatistics struct {
+	Period string        `json:"period"`
+	Data   []PeriodStats `json:"data"`
+}
