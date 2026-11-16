@@ -50,6 +50,7 @@ h1 {
     font-size: 18px;
 }
 
-.short-url {
+.short-url,
+.stats-url {
     color: black;
 }
