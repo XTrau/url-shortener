@@ -60,7 +60,7 @@ POST `/short` - сокращает переданную ссылку, возвр
 Пример ответа:
 
 ```
-{ "slug":"IziXC5Az", slug_id: 2 }
+{ "text":"IziXC5Az", "number": 2 }
 ```
 
-GET `/s/{slug}_{slug_number}` - делает редирект на ссылку к которой привязан slug.
+GET `/s/{slug_text}_{slug_number}` - делает редирект на ссылку к которой привязан slug.
