@@ -1,43 +1,63 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
-	"strconv"
+	"time"
 	"urlshortener/internal/apperrors"
 	"urlshortener/internal/domain"
 )
 
 type UrlUseCases interface {
-	GetSlug(url domain.Url) (domain.Slug, error)
-	GetUrl(slug domain.Slug) (domain.Url, error)
+	GetUrlByText(ctx context.Context, urlText string) (domain.Url, error)
+	GetUrlBySlug(ctx context.Context, slug domain.UrlSlug) (domain.Url, error)
+}
+
+type RedirectUseCases interface {
+	Save(ctx context.Context, redirect domain.RedirectInfo) error
+}
+
+type StatisticsUseCases interface {
+	Summary(ctx context.Context, urlID int) (domain.SummaryStatistics, error)
 }
 
 type shortenerHandlers struct {
-	useCases UrlUseCases
+	urlUseCases        UrlUseCases
+	redirectUseCases   RedirectUseCases
+	statisticsUseCases StatisticsUseCases
 }
 
-func NewShortenerHandlers(useCases UrlUseCases) *shortenerHandlers {
-	return &shortenerHandlers{useCases}
+func NewShortenerHandlers(urlUseCases UrlUseCases, redirectUseCases RedirectUseCases, statisticsUseCases StatisticsUseCases) *shortenerHandlers {
+	return &shortenerHandlers{
+		urlUseCases:        urlUseCases,
+		redirectUseCases:   redirectUseCases,
+		statisticsUseCases: statisticsUseCases,
+	}
+}
+
+type GetSlugRequest struct {
+	Url string `json:"url"`
 }
 
 func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
-	var urlReq domain.Url
+	var urlReq GetSlugRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&urlReq); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	slug, err := sr.useCases.GetSlug(urlReq)
+	url, err := sr.urlUseCases.GetUrlByText(r.Context(), urlReq.Url)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		panic(err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(slug); err != nil {
+	if err := json.NewEncoder(w).Encode(url.Slug); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		panic(err)
 	}
@@ -45,19 +65,17 @@ func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Req
 
 func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Request) {
 	slugText := r.PathValue("slug")
-	slugID, err := strconv.Atoi(r.URL.Query().Get("i"))
+	slog.Debug("Getting redirect on slug", slog.String("slug", slugText))
+
+	urlSlug, err := domain.ParseUrlSlug(slugText)
 
 	if err != nil {
+		slog.Info("Error on parse url", slog.String("error", err.Error()))
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	slug := domain.Slug{
-		SlugID: slugID,
-		Text:   slugText,
-	}
-
-	url, err := sr.useCases.GetUrl(slug)
+	url, err := sr.urlUseCases.GetUrlBySlug(r.Context(), urlSlug)
 
 	if err != nil {
 		if errors.Is(err, apperrors.ErrUrlNotFound) {
@@ -69,7 +87,55 @@ func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	redirect := domain.RedirectInfo{
+		CreatedAt: time.Now(),
+		IP:        r.RemoteAddr,
+		UserAgent: r.UserAgent(),
+		UrlID:     url.ID,
+	}
+
+	if err = sr.redirectUseCases.Save(r.Context(), redirect); err != nil {
+		slog.Error("Error on saving redirect info", slog.Any("redirect", redirect), slog.String("error", err.Error()))
+	}
+
 	w.Header().Set("Location", url.Url)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusMovedPermanently)
+}
+
+func (sr *shortenerHandlers) SummaryStatsHandler(w http.ResponseWriter, r *http.Request) {
+	slugText := r.PathValue("slug")
+	slog.Debug("Getting summary statistics.", slog.String("slug", slugText))
+
+	urlSlug, err := domain.ParseUrlSlug(slugText)
+	if err != nil {
+		slog.Info("Error on parse url", slog.String("error", err.Error()))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	url, err := sr.urlUseCases.GetUrlBySlug(r.Context(), urlSlug)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrUrlNotFound) {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		} else {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			panic(err.Error())
+		}
+		return
+	}
+
+	stats, err := sr.statisticsUseCases.Summary(r.Context(), url.ID)
+
+	if err != nil {
+		slog.Info("Error getting stats for slug", slog.String("slug", slugText), slog.String("error", err.Error()))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(&stats); err != nil {
+		slog.Info("Error on encode stats", slog.String("slug", slugText), slog.Any("stats", stats), slog.String("error", err.Error()))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 }

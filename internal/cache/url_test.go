@@ -1,6 +1,7 @@
 package cache_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ type MapKeyValueStorage struct {
 	mu    sync.RWMutex
 }
 
-func (kv *MapKeyValueStorage) Get(key string) (string, error) {
+func (kv *MapKeyValueStorage) Get(ctx context.Context, key string) (string, error) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
 
@@ -25,7 +26,7 @@ func (kv *MapKeyValueStorage) Get(key string) (string, error) {
 	return value, nil
 }
 
-func (kv *MapKeyValueStorage) Set(key string, value string, ttl time.Duration) error {
+func (kv *MapKeyValueStorage) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 
@@ -41,42 +42,36 @@ func TestUrlCache(t *testing.T) {
 	urlCache := cache.NewUrlCache(cacheStore)
 
 	url := domain.Url{
+		ID:  1,
 		Url: "http://example.com",
+		Slug: domain.UrlSlug{
+			Text:   "qweqwe",
+			Number: 1,
+		},
 	}
 
-	slug := domain.Slug{
-		Text:   "qweqwe",
-		SlugID: 1,
-	}
-
-	err := urlCache.Save(url, slug)
+	err := urlCache.Save(context.Background(), url)
 	if err != nil {
 		t.Errorf("urlCache.Save must return nil error")
 	}
 
-	cachedSlug, err := urlCache.GetSlug(url)
+	cachedUrl, err := urlCache.GetUrlBySlug(context.Background(), url.Slug)
 
 	if err != nil {
-		t.Errorf("urlCache.GetSlug must return nil error")
+		t.Errorf("urlCache.GetByUrlSlug must return nil error")
 	}
 
-	if cachedSlug.Text != slug.Text || cachedSlug.SlugID != slug.SlugID {
-		t.Errorf(
-			"cachedSlug.Slug=%q, cachedSlug.SlugID=%d expected: cachedSlug.Slug=%q, cachedSlug.SlugID=%d",
-			cachedSlug.Text,
-			cachedSlug.SlugID,
-			slug.Text,
-			slug.SlugID,
-		)
+	if cachedUrl != url {
+		t.Errorf("cachedURL=%q expected: %q", cachedUrl, url)
 	}
 
-	cachedURL, err := urlCache.GetUrl(slug)
+	cachedUrl, err = urlCache.GetUrlByText(context.Background(), url.Url)
 
 	if err != nil {
-		t.Errorf("urlCache.GetUrl must return nil error")
+		t.Errorf("urlCache.GetByUrlSlug must return nil error")
 	}
 
-	if cachedURL != url {
-		t.Errorf("cachedURL=%q expected: %q", cachedURL, url)
+	if cachedUrl != url {
+		t.Errorf("cachedURL=%q expected: %q", cachedUrl, url)
 	}
 }
