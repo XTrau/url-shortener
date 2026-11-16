@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 	"urlshortener/internal/apperrors"
 	"urlshortener/internal/domain"
@@ -43,11 +45,33 @@ type GetSlugRequest struct {
 	Url string `json:"url"`
 }
 
+func parseValidURL(rawURL string) (*url.URL, error) {
+	// ParseRequestURI rejects fragments (#) and relative URLs without a leading slash,
+	// making it stricter than url.Parse.
+	u, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL syntax: %w", err)
+	}
+
+	// Ensure the URL has a scheme (e.g., https) and a host (e.g., example.com)
+	if u.Scheme == "" || u.Host == "" {
+		return nil, fmt.Errorf("URL must include both scheme and host")
+	}
+
+	return u, nil
+}
+
 func (sr *shortenerHandlers) ShortenerHandler(w http.ResponseWriter, r *http.Request) {
 	var urlReq GetSlugRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&urlReq); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	_, err := parseValidURL(urlReq.Url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
