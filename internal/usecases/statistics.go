@@ -8,10 +8,10 @@ import (
 )
 
 type StatsGetter interface {
-	TotalRedirrectCount(ctx context.Context, urlID int) (int, error)
+	TotalRedirectCount(ctx context.Context, urlID int) (int, error)
 	TotalIpCount(ctx context.Context, urlID int) (int, error)
 	// Возвращает количество редиректов в интервале [start, end).
-	RedirrectCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error)
+	RedirectCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error)
 	// Возвращает количество уникальных ip в интервале [start, end).
 	IpCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error)
 }
@@ -30,22 +30,22 @@ func (uc *StatisticsUseCases) Summary(ctx context.Context, urlID int) (domain.Su
 	now7d := now.Add(-time.Hour * 24 * 7)
 	now30d := now.Add(-time.Hour * 24 * 30)
 
-	total, err := uc.sg.TotalRedirrectCount(ctx, urlID)
+	total, err := uc.sg.TotalRedirectCount(ctx, urlID)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	total24h, err := uc.sg.RedirrectCount(ctx, urlID, now24h, now)
+	total24h, err := uc.sg.RedirectCount(ctx, urlID, now24h, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	total7d, err := uc.sg.RedirrectCount(ctx, urlID, now7d, now)
+	total7d, err := uc.sg.RedirectCount(ctx, urlID, now7d, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	total30d, err := uc.sg.RedirrectCount(ctx, urlID, now30d, now)
+	total30d, err := uc.sg.RedirectCount(ctx, urlID, now30d, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
@@ -79,5 +79,31 @@ func (uc *StatisticsUseCases) Summary(ctx context.Context, urlID int) (domain.Su
 		Unique24H: unique24h,
 		Unique7D:  unique7d,
 		Unique30D: unique30d,
+	}, nil
+}
+
+func (uc *StatisticsUseCases) Timeline(ctx context.Context, urlID int, period domain.Period) (domain.TimelineStatistics, error) {
+	intervals := period.Intervals()
+	stats := make([]domain.PeriodStats, 0, len(intervals))
+	for _, interval := range intervals {
+		redirects, err := uc.sg.RedirectCount(ctx, urlID, interval.Start, interval.End)
+		if err != nil {
+			return domain.TimelineStatistics{}, err
+		}
+
+		unique, err := uc.sg.IpCount(ctx, urlID, interval.Start, interval.End)
+		if err != nil {
+			return domain.TimelineStatistics{}, err
+		}
+
+		stats = append(stats, domain.PeriodStats{
+			Label:     interval.Label(),
+			Redirects: redirects,
+			Unique:    unique,
+		})
+	}
+
+	return domain.TimelineStatistics{
+		Data: stats,
 	}, nil
 }

@@ -11,6 +11,7 @@ type ShortenerHandlers interface {
 	ShortenerHandler(w http.ResponseWriter, r *http.Request)
 	RedirectHandler(w http.ResponseWriter, r *http.Request)
 	SummaryStatsHandler(w http.ResponseWriter, r *http.Request)
+	PeriodStatsHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func RegisterRoutes(mux *http.ServeMux, sh ShortenerHandlers) {
@@ -22,6 +23,7 @@ func RegisterRoutes(mux *http.ServeMux, sh ShortenerHandlers) {
 
 	// Роуты для статистики
 	mux.HandleFunc("GET /api/statistics/{slug}", sh.SummaryStatsHandler)
+	mux.HandleFunc("GET /api/statistics/{slug}/timeline", sh.PeriodStatsHandler)
 
 	// Роуты для frontend
 	mux.Handle("/", http.FileServer(http.Dir("./web")))

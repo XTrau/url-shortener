@@ -22,6 +22,6 @@ type PeriodStats struct {
 }
 
 type TimelineStatistics struct {
-	Period string        `json:"period"`
-	Data   []PeriodStats `json:"data"`
+	Url  string        `json:"url"`
+	Data []PeriodStats `json:"data"`
 }

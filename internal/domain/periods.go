@@ -13,6 +13,10 @@ type Interval struct {
 	End   time.Time
 }
 
+func (i Interval) Label() string {
+	return i.Start.Format(time.RFC3339)
+}
+
 type Period interface {
 	Intervals() []Interval
 }
@@ -27,7 +31,10 @@ func (p HourPeriod) Intervals() []Interval {
 	d := now.Truncate(time.Hour)
 	step := time.Hour
 	for range p.Count {
-		result = append(result, Interval{Start: d, End: d.Add(step)})
+		result = append(result, Interval{
+			Start: d,
+			End:   d.Add(step),
+		})
 		d = d.Add(-step)
 	}
 	return result
@@ -44,7 +51,10 @@ func (p DayPeriod) Intervals() []Interval {
 	d := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
 	step := time.Hour * 24
 	for range p.Count {
-		result = append(result, Interval{Start: d, End: d.Add(step)})
+		result = append(result, Interval{
+			Start: d,
+			End:   d.Add(step),
+		})
 		d = d.Add(-step)
 	}
 	return result
@@ -63,7 +73,10 @@ func (p MonthPeriod) Intervals() []Interval {
 	prev := now
 
 	for range p.Count {
-		result = append(result, Interval{Start: cur, End: prev})
+		result = append(result, Interval{
+			Start: cur,
+			End:   prev,
+		})
 
 		month--
 		if month <= 0 {

@@ -14,7 +14,7 @@ func NewRedirectStatisticsPostgresRepository(db *sql.DB) *RedirectStatisticsPost
 	return &RedirectStatisticsPostgresRepository{db}
 }
 
-func (repo *RedirectStatisticsPostgresRepository) RedirrectCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error) {
+func (repo *RedirectStatisticsPostgresRepository) RedirectCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error) {
 	query := `SELECT COUNT(1) FROM redirects WHERE url_id=$1 AND ($2 <= redirected_at AND redirected_at < $3)`
 	row := repo.db.QueryRowContext(ctx, query, urlID, start, end)
 
@@ -36,7 +36,7 @@ func (repo *RedirectStatisticsPostgresRepository) IpCount(ctx context.Context, u
 	return count, nil
 }
 
-func (repo *RedirectStatisticsPostgresRepository) TotalRedirrectCount(ctx context.Context, urlID int) (int, error) {
+func (repo *RedirectStatisticsPostgresRepository) TotalRedirectCount(ctx context.Context, urlID int) (int, error) {
 	query := `SELECT COUNT(1) FROM redirects WHERE url_id=$1`
 	row := repo.db.QueryRowContext(ctx, query, urlID)
 

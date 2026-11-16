@@ -22,6 +22,7 @@ type RedirectUseCases interface {
 
 type StatisticsUseCases interface {
 	Summary(ctx context.Context, urlID int) (domain.SummaryStatistics, error)
+	Timeline(ctx context.Context, urlID int, period domain.Period) (domain.TimelineStatistics, error)
 }
 
 type shortenerHandlers struct {
@@ -136,6 +137,51 @@ func (sr *shortenerHandlers) SummaryStatsHandler(w http.ResponseWriter, r *http.
 
 	if err := json.NewEncoder(w).Encode(&stats); err != nil {
 		slog.Info("Error on encode stats", slog.String("slug", slugText), slog.Any("stats", stats), slog.String("error", err.Error()))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (sr *shortenerHandlers) PeriodStatsHandler(w http.ResponseWriter, r *http.Request) {
+	slugText := r.PathValue("slug")
+	slog.Debug("Getting summary statistics.", slog.String("slug", slugText))
+
+	urlSlug, err := domain.ParseUrlSlug(slugText)
+	if err != nil {
+		slog.Info("Error on parse url", slog.String("error", err.Error()))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	periodStr := r.URL.Query().Get("period")
+	period, err := domain.ParsePeriod(periodStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	url, err := sr.urlUseCases.GetUrlBySlug(r.Context(), urlSlug)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrUrlNotFound) {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		} else {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			panic(err.Error())
+		}
+		return
+	}
+
+	timelineStats, err := sr.statisticsUseCases.Timeline(r.Context(), url.ID, period)
+	timelineStats.Url = url.Url
+
+	if err != nil {
+		slog.Info("Error getting stats for slug", slog.String("slug", slugText), slog.String("error", err.Error()))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(&timelineStats); err != nil {
+		slog.Info("Error on encode stats", slog.String("slug", slugText), slog.Any("stats", timelineStats), slog.String("error", err.Error()))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
