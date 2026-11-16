@@ -69,9 +69,17 @@ GET `/s/{slug_text}_{slug_number}` - делает редирект на ссыл
 
 GET `/api/statistics/{slug_text}_{slug_number}` - возвращает общую статистику по требуемому slug.
 
+```
 {
-  "total": 0,
-  ""
+  "total":1,
+  "unique":1,
+  "total_24h":1,
+  "total_7d":1,
+  "total_30d":1,
+  "unique_24h":1,
+  "unique_7d":1,
+  "unique_30d":1
 }
+```
 
 GET `/statistics.html?slug={slug_text}_{slug_number}` - возвращает страницу со статистикой по требуемому slug.
