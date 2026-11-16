@@ -79,7 +79,7 @@ func run() error {
 	handlers.RegisterRoutes(mux, h)
 
 	// Middlewares
-	handler := middlewares.RecoverMiddleware(middlewares.PrometheusMiddleware(mux))
+	handler := middlewares.RecoverMiddleware(mux)
 	serverAddr := ":8080"
 
 	server := http.Server{
