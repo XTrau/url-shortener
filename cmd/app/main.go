@@ -59,13 +59,16 @@ func run() error {
 		return fmt.Errorf("Error connecting to Redis: %w", err)
 	}
 
-	// Cache and repositories
+	// Cache
 	redisCache := cache.NewRedisCache(rdb, time.Second)
 	urlCache := cache.NewUrlCache(redisCache)
+
+	// Repositories
 	urlRepository := repositories.NewUrlPostgresRepository(db)
 	redirectRepository := repositories.NewRedirectsPostgresRepository(db)
 	statisticsRepository := repositories.NewRedirectStatisticsPostgresRepository(db)
 
+	// UseCases
 	redirectUseCases := usecases.NewRedirectsUseCases(redirectRepository)
 	urlUseCases := usecases.NewUrlUseCases(urlRepository, urlCache)
 	statisticsUseCases := usecases.NewStatisticsUseCases(statisticsRepository)

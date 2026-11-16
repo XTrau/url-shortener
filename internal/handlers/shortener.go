@@ -94,7 +94,9 @@ func (sr *shortenerHandlers) RedirectHandler(w http.ResponseWriter, r *http.Requ
 		UrlID:     url.ID,
 	}
 
-	sr.redirectUseCases.Save(r.Context(), redirect)
+	if err = sr.redirectUseCases.Save(r.Context(), redirect); err != nil {
+		slog.Error("Error on saving redirect info", slog.Any("redirect", redirect), slog.String("error", err.Error()))
+	}
 
 	w.Header().Set("Location", url.Url)
 	w.Header().Set("Content-Type", "text/plain")
