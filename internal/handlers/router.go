@@ -10,6 +10,7 @@ import (
 type ShortenerHandlers interface {
 	ShortenerHandler(w http.ResponseWriter, r *http.Request)
 	RedirectHandler(w http.ResponseWriter, r *http.Request)
+	SummaryStatsHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func RegisterRoutes(mux *http.ServeMux, sh ShortenerHandlers) {
@@ -18,6 +19,9 @@ func RegisterRoutes(mux *http.ServeMux, sh ShortenerHandlers) {
 	// Роуты для сокращения ссылок
 	mux.HandleFunc("POST /api/short", sh.ShortenerHandler)
 	mux.HandleFunc("GET /s/{slug}", sh.RedirectHandler)
+
+	// Роуты для статистики
+	mux.HandleFunc("GET /api/statistics/{slug}", sh.SummaryStatsHandler)
 
 	// Роуты для frontend
 	mux.Handle("/", http.FileServer(http.Dir("./web")))

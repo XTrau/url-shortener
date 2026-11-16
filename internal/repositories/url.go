@@ -69,7 +69,7 @@ func (repo *UrlPostgresRepository) CreateUrl(ctx context.Context, urlText string
 	return domain.Url{
 		ID:  id,
 		Url: urlText,
-		Slug: &domain.UrlSlug{
+		Slug: domain.UrlSlug{
 			Text:   slug.Text,
 			Number: slugNumber,
 		},
@@ -87,35 +87,55 @@ func (repo *UrlPostgresRepository) GetUrlBySlug(ctx context.Context, slug domain
 	`
 	row := repo.db.QueryRowContext(ctx, query, slug.Number, slug.Text)
 
-	var url string
-	err := row.Scan(&url)
+	var id, slugNumber int
+	var url, slugText string
+	err := row.Scan(&id, &url, &slugText, &slugNumber)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Url{}, apperrors.ErrUrlNotFound
 	}
-	return domain.Url{Url: url}, err
+
+	if err != nil {
+		return domain.Url{}, err
+	}
+
+	return domain.Url{
+		ID:  id,
+		Url: url,
+		Slug: domain.UrlSlug{
+			Text:   slugText,
+			Number: slugNumber,
+		},
+	}, nil
 }
 
-func (repo *UrlPostgresRepository) GetSlugByUrl(ctx context.Context, urlText string) (domain.UrlSlug, error) {
+func (repo *UrlPostgresRepository) GetUrlByText(ctx context.Context, urlText string) (domain.Url, error) {
 	slog.Debug("Getting url from database", slog.String("url", urlText))
 
 	query := `
-	SELECT s.slug, u.slug_number
+	SELECT u.id, u.url, s.slug, u.slug_number
 	FROM urls u
 	JOIN slugs s ON u.slug_id=s.id
 	WHERE u.url=$1
 	`
 	row := repo.db.QueryRowContext(ctx, query, urlText)
 
-	var slug string
-	var slugNumber int
-
-	err := row.Scan(&slug, &slugNumber)
+	var id, slugNumber int
+	var url, slugText string
+	err := row.Scan(&id, &url, &slugText, &slugNumber)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.UrlSlug{}, apperrors.ErrSlugNotFound
+		return domain.Url{}, apperrors.ErrUrlNotFound
 	}
 
-	return domain.UrlSlug{
-		Text:   slug,
-		Number: slugNumber,
-	}, err
+	if err != nil {
+		return domain.Url{}, err
+	}
+
+	return domain.Url{
+		ID:  id,
+		Url: url,
+		Slug: domain.UrlSlug{
+			Text:   slugText,
+			Number: slugNumber,
+		},
+	}, nil
 }

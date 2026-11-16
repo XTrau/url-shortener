@@ -64,12 +64,14 @@ func run() error {
 	urlCache := cache.NewUrlCache(redisCache)
 	urlRepository := repositories.NewUrlPostgresRepository(db)
 	redirectRepository := repositories.NewRedirectsPostgresRepository(db)
+	statisticsRepository := repositories.NewRedirectStatisticsPostgresRepository(db)
 
 	redirectUseCases := usecases.NewRedirectsUseCases(redirectRepository)
 	urlUseCases := usecases.NewUrlUseCases(urlRepository, urlCache)
+	statisticsUseCases := usecases.NewStatisticsUseCases(statisticsRepository)
 
 	// Handlers
-	h := handlers.NewShortenerHandlers(urlUseCases, redirectUseCases)
+	h := handlers.NewShortenerHandlers(urlUseCases, redirectUseCases, statisticsUseCases)
 	mux := http.NewServeMux()
 	handlers.RegisterRoutes(mux, h)
 

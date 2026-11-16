@@ -18,7 +18,7 @@ async function shortUrl(url) {
 
     body = await response.json()
 
-    slugUrl = `${apiUrl}/s/${body["slug"]}_${body["number"]}`
+    slugUrl = `${apiUrl}/s/${body["text"]}_${body["number"]}`
 
     currentUrl = slugUrl
     outputElement.textContent = slugUrl

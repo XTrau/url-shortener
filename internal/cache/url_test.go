@@ -41,41 +41,37 @@ func TestUrlCache(t *testing.T) {
 	}
 	urlCache := cache.NewUrlCache(cacheStore)
 
-	url := "http://example.com"
-
-	slug := domain.UrlSlug{
-		Text:   "qweqwe",
-		Number: 1,
+	url := domain.Url{
+		ID:  1,
+		Url: "http://example.com",
+		Slug: domain.UrlSlug{
+			Text:   "qweqwe",
+			Number: 1,
+		},
 	}
 
-	err := urlCache.Save(context.TODO(), url, slug)
+	err := urlCache.Save(context.Background(), url)
 	if err != nil {
 		t.Errorf("urlCache.Save must return nil error")
 	}
 
-	cachedSlug, err := urlCache.GetSlug(context.TODO(), url)
+	cachedUrl, err := urlCache.GetUrlBySlug(context.Background(), url.Slug)
 
 	if err != nil {
-		t.Errorf("urlCache.GetSlug must return nil error")
+		t.Errorf("urlCache.GetByUrlSlug must return nil error")
 	}
 
-	if cachedSlug != slug {
-		t.Errorf(
-			"cachedSlug.Slug=%q, cachedSlug.SlugID=%d expected: cachedSlug.Slug=%q, cachedSlug.SlugID=%d",
-			cachedSlug.Text,
-			cachedSlug.Number,
-			slug.Text,
-			slug.Number,
-		)
+	if cachedUrl != url {
+		t.Errorf("cachedURL=%q expected: %q", cachedUrl, url)
 	}
 
-	cachedURL, err := urlCache.GetUrl(context.TODO(), slug)
+	cachedUrl, err = urlCache.GetUrlByText(context.Background(), url.Url)
 
 	if err != nil {
-		t.Errorf("urlCache.GetUrl must return nil error")
+		t.Errorf("urlCache.GetByUrlSlug must return nil error")
 	}
 
-	if cachedURL != url {
-		t.Errorf("cachedURL=%q expected: %q", cachedURL, url)
+	if cachedUrl != url {
+		t.Errorf("cachedURL=%q expected: %q", cachedUrl, url)
 	}
 }
