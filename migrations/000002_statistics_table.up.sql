@@ -2,7 +2,7 @@ CREATE TABLE redirects (
     id BIGSERIAL PRIMARY KEY,
     url_id INT REFERENCES urls(id) NOT NULL,
     redirected_at TIMESTAMP NOT NULL,
-    ip VARCHAR(15) NOT NULL,
+    ip TEXT NOT NULL,
     user_agent TEXT
 );
 
