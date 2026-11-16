@@ -126,6 +126,7 @@ func (sr *shortenerHandlers) SummaryStatsHandler(w http.ResponseWriter, r *http.
 	}
 
 	stats, err := sr.statisticsUseCases.Summary(r.Context(), url.ID)
+	stats.Url = url.Url
 
 	if err != nil {
 		slog.Info("Error getting stats for slug", slog.String("slug", slugText), slog.String("error", err.Error()))

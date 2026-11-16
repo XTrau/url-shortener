@@ -1,6 +1,8 @@
 package domain
 
 type SummaryStatistics struct {
+	Url string `json:"url"`
+
 	Total     int `json:"total"`
 	UniqueIPs int `json:"unique"`
 

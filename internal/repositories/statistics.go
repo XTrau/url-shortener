@@ -14,16 +14,9 @@ func NewRedirectStatisticsPostgresRepository(db *sql.DB) *RedirectStatisticsPost
 	return &RedirectStatisticsPostgresRepository{db}
 }
 
-func (repo *RedirectStatisticsPostgresRepository) RedirrectCount(ctx context.Context, urlID int, t *time.Time) (int, error) {
-	var row *sql.Row
-
-	if t == nil {
-		query := `SELECT COUNT(1) FROM redirects WHERE url_id=$1`
-		row = repo.db.QueryRowContext(ctx, query, urlID)
-	} else {
-		query := `SELECT COUNT(1) FROM redirects WHERE url_id=$1 AND redirected_at>=$2`
-		row = repo.db.QueryRowContext(ctx, query, urlID, *t)
-	}
+func (repo *RedirectStatisticsPostgresRepository) RedirrectCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error) {
+	query := `SELECT COUNT(1) FROM redirects WHERE url_id=$1 AND ($2 <= redirected_at AND redirected_at < $3)`
+	row := repo.db.QueryRowContext(ctx, query, urlID, start, end)
 
 	var count int
 	if err := row.Scan(&count); err != nil {
@@ -32,15 +25,31 @@ func (repo *RedirectStatisticsPostgresRepository) RedirrectCount(ctx context.Con
 	return count, nil
 }
 
-func (repo *RedirectStatisticsPostgresRepository) IpCount(ctx context.Context, urlID int, t *time.Time) (int, error) {
-	var row *sql.Row
-	if t == nil {
-		query := `SELECT COUNT(1) FROM (SELECT DISTINCT ip FROM redirects WHERE url_id=$1)`
-		row = repo.db.QueryRowContext(ctx, query, urlID)
-	} else {
-		query := `SELECT COUNT(1) FROM (SELECT DISTINCT ip FROM redirects WHERE url_id=$1 AND redirected_at>=$2)`
-		row = repo.db.QueryRowContext(ctx, query, urlID, *t)
+func (repo *RedirectStatisticsPostgresRepository) IpCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error) {
+	query := `SELECT COUNT(1) FROM (SELECT DISTINCT ip FROM redirects WHERE url_id=$1 AND ($2 <= redirected_at AND redirected_at < $3))`
+	row := repo.db.QueryRowContext(ctx, query, urlID, start, end)
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, err
 	}
+	return count, nil
+}
+
+func (repo *RedirectStatisticsPostgresRepository) TotalRedirrectCount(ctx context.Context, urlID int) (int, error) {
+	query := `SELECT COUNT(1) FROM redirects WHERE url_id=$1`
+	row := repo.db.QueryRowContext(ctx, query, urlID)
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (repo *RedirectStatisticsPostgresRepository) TotalIpCount(ctx context.Context, urlID int) (int, error) {
+	query := `SELECT COUNT(1) FROM (SELECT DISTINCT ip FROM redirects WHERE url_id=$1)`
+	row := repo.db.QueryRowContext(ctx, query, urlID)
 
 	var count int
 	if err := row.Scan(&count); err != nil {

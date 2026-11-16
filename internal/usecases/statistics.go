@@ -8,14 +8,12 @@ import (
 )
 
 type StatsGetter interface {
-	// Возвращает количество редиректов после t.
-	//
-	// Если t=nil то возвращает количество за все время.
-	RedirrectCount(ctx context.Context, urlID int, t *time.Time) (int, error)
-	// Возвращает количество уникальных ip после t.
-	//
-	// Если t=nil то возвращает количество за все время.
-	IpCount(ctx context.Context, urlID int, t *time.Time) (int, error)
+	TotalRedirrectCount(ctx context.Context, urlID int) (int, error)
+	TotalIpCount(ctx context.Context, urlID int) (int, error)
+	// Возвращает количество редиректов в интервале [start, end).
+	RedirrectCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error)
+	// Возвращает количество уникальных ip в интервале [start, end).
+	IpCount(ctx context.Context, urlID int, start time.Time, end time.Time) (int, error)
 }
 
 type StatisticsUseCases struct {
@@ -32,42 +30,42 @@ func (uc *StatisticsUseCases) Summary(ctx context.Context, urlID int) (domain.Su
 	now7d := now.Add(-time.Hour * 24 * 7)
 	now30d := now.Add(-time.Hour * 24 * 30)
 
-	total, err := uc.sg.RedirrectCount(ctx, urlID, nil)
+	total, err := uc.sg.TotalRedirrectCount(ctx, urlID)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	total24h, err := uc.sg.RedirrectCount(ctx, urlID, &now24h)
+	total24h, err := uc.sg.RedirrectCount(ctx, urlID, now24h, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	total7d, err := uc.sg.RedirrectCount(ctx, urlID, &now7d)
+	total7d, err := uc.sg.RedirrectCount(ctx, urlID, now7d, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	total30d, err := uc.sg.RedirrectCount(ctx, urlID, &now30d)
+	total30d, err := uc.sg.RedirrectCount(ctx, urlID, now30d, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting redirect count: %w", err)
 	}
 
-	unique, err := uc.sg.IpCount(ctx, urlID, nil)
+	unique, err := uc.sg.TotalIpCount(ctx, urlID)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting ips count: %w", err)
 	}
 
-	unique24h, err := uc.sg.IpCount(ctx, urlID, &now24h)
+	unique24h, err := uc.sg.IpCount(ctx, urlID, now24h, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting ips count: %w", err)
 	}
 
-	unique7d, err := uc.sg.IpCount(ctx, urlID, &now7d)
+	unique7d, err := uc.sg.IpCount(ctx, urlID, now7d, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting ips count: %w", err)
 	}
 
-	unique30d, err := uc.sg.IpCount(ctx, urlID, &now30d)
+	unique30d, err := uc.sg.IpCount(ctx, urlID, now30d, now)
 	if err != nil {
 		return domain.SummaryStatistics{}, fmt.Errorf("Error on getting ips count: %w", err)
 	}
