@@ -79,14 +79,14 @@ GET `/api/statistics/{slug_text}_{slug_number}` - возвращает общу�
 
 ```
 {
-  "total":1,
-  "unique":1,
-  "total_24h":1,
-  "total_7d":1,
-  "total_30d":1,
-  "unique_24h":1,
-  "unique_7d":1,
-  "unique_30d":1
+  "total":34765,
+  "unique":751,
+  "total_24h":1973,
+  "total_7d":14109,
+  "total_30d":34351,
+  "unique_24h":690,
+  "unique_7d":751,
+  "unique_30d":751
 }
 ```
 
