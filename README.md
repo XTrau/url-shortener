@@ -16,19 +16,15 @@ API для сокращения ссылок с статистикой пере�
 - golang-migrate (для миграций)
 - go-redis/v9 (для Redis)
 
-### Запуск в Docker compose
+### Скриншоты
 
-Windows:
+#### Главная страница
 
-```
-docker-compose up -d
-```
+![](images/1.png)
 
-Linux:
+#### Статистика
 
-```
-docker compose up -d
-```
+![](images/2.png)
 
 ### Сокращение ссылки 
 
