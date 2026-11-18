@@ -21,5 +21,10 @@ func (repo *RedirectsPostgresRepository) Save(ctx context.Context, redirect doma
 	($1, $2, $3, $4)
 	`
 
-	return repo.db.QueryRowContext(ctx, query, redirect.UrlID, redirect.CreatedAt, redirect.IP, redirect.UserAgent).Err()
+	_, err := repo.db.ExecContext(ctx, query, redirect.UrlID, redirect.CreatedAt, redirect.IP, redirect.UserAgent)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
